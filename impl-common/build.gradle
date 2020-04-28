@@ -1,0 +1,18 @@
+plugins {
+    id 'java'
+}
+
+dependencies {
+    compile project(':camel')
+    compile name: "generated"
+    compile group: 'org.apache.camel', name: 'camel-core', version: '3.2.0'
+    compile("org.springframework.boot:spring-boot-starter:2.2.6.RELEASE") {
+        exclude module: 'spring-boot-starter-logging'
+    }
+	 // If we're past Java 8, add extra imports
+    if (JavaVersion.current().ordinal() > 8) {
+        compile 'com.sun.activation:javax.activation:1.2.0'
+        implementation "jakarta.xml.bind:jakarta.xml.bind-api:2.3.2"
+        implementation "org.glassfish.jaxb:jaxb-runtime:2.3.2"
+    }
+}

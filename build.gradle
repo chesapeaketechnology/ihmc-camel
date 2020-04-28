@@ -1,0 +1,35 @@
+plugins {
+    id 'java'
+}
+
+allprojects {
+    repositories {
+        flatDir dirs: "${rootDir}/libs"
+        mavenCentral()
+        maven {
+            url "https://dl.bintray.com/ihmcrobotics/maven-release/"
+        }
+    }
+
+    apply plugin: 'checkstyle'
+    checkstyle {
+        configFile file("${rootDir}/config/checkstyle/checkstyle.xml")
+    }
+
+    plugins.withType(JavaPlugin) {
+        sourceCompatibility = 1.8
+        targetCompatibility = 1.8
+
+        ext {
+            ihmc_version = '0.14.0'
+        }
+
+        dependencies {
+            compile (group: "us.ihmc", name: "ihmc-pub-sub", version: "$ihmc_version")
+        }
+    }
+}
+
+subprojects {
+    version = '1.0.0'
+}

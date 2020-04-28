@@ -1,0 +1,1 @@
+This directory contains auto-generated classes from the example IDL file.

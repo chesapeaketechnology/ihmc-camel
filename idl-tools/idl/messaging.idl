@@ -1,0 +1,20 @@
+module messaging {
+	@Topic
+	struct Channel {
+		@Key long id;
+		string name;
+		string description;
+	};
+
+	struct User {
+		@Key long id;
+		string name;
+	};
+
+	struct Message {
+		@Key long messageId;
+		@Key long channelId;
+		long userId;
+		string text;
+	};
+};

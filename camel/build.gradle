@@ -1,0 +1,9 @@
+plugins {
+    id 'java'
+}
+
+dependencies {
+    // compile-only as we won't want to include these in the packaged output for deployment
+    compileOnly group: 'javax.enterprise', name: 'cdi-api', version: '2.0'
+    compileOnly group: 'org.apache.camel', name: 'camel-core', version: '3.2.0'
+}

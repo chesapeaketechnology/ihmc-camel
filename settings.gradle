@@ -1,0 +1,3 @@
+rootProject.name = 'dds-java'
+
+include 'idl-tools', 'camel', 'impl-common', 'impl-client', 'impl-server'
