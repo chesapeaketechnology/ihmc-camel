@@ -1,5 +1,6 @@
 package com.chesapeaketechnology.dds;
 
+import com.chesapeaketechnology.dds.util.ReflectionUtil;
 import org.apache.camel.Endpoint;
 import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.support.DefaultComponent;
@@ -34,35 +35,39 @@ public class DdsCamelComponent extends DefaultComponent
         if (matcher.matches())
         {
             // Automatically look up data generated type handler on classpath
-            TopicDataType<?> topicDataType = null;
             String dataClassName = matcher.group(3);
-            String dataClassNameSerializer = dataClassName + "PubSubType";
-            try
-            {
-                topicDataType = (TopicDataType<?>) Class.forName(dataClassNameSerializer).getConstructors()[0].newInstance();
-            } catch (ReflectiveOperationException ex)
-            {
-                logger.error("Failed to fetch serializer for {}, please check your classpath", dataClassName);
-            }
+            TopicDataType<?> topicDataType = ReflectionUtil.createIdlPubSubType(dataClassName);
             // Get the QoS, may be null
             String configKey = String.valueOf(parameters.get("qos"));
             DdsQosConfig config = DdsQoSConfigManager.getConfig(configKey);
+            // Check for message reuse
+            boolean reuse = Boolean.parseBoolean(String.valueOf(parameters.get("reuse")));
             // Substring off parameters
             if (uri.contains("?"))
             {
                 uri = uri.substring(0, uri.indexOf('?'));
             }
             // Create the endpoint
+            String topic = matcher.group(1);
+            int domain = Integer.parseInt(matcher.group(2));
             DdsEndpoint endpoint = new DdsEndpoint(uri,
                     this,
-                    matcher.group(1), // Topic name
-                    dataClassName, // Fully qualified name of the topic's data class.
-                    Integer.parseInt(matcher.group(2)), // Domain
+                    topic, // Topic name, simple name of data class
+                    dataClassName, // Fully qualified name of the data class.
+                    domain,
                     topicDataType, // Type serializer
-                    config // QoS
+                    config, // QoS
+                    reuse // message reuse
             );
             endpointMap.put(uri, endpoint);
-            logger.debug("Created DDS endpoint '{}'", uri);
+            if (logger.isTraceEnabled()){
+                logger.trace("Created DDS endpoint from uri '{}'" +
+                        "- Topic:  {}\n" +
+                        "- Type:   {}\n" +
+                        "- Domain: {}", uri, topic, dataClassName, domain);
+            } else {
+                logger.debug("Created DDS endpoint '{}'", uri);
+            }
             return endpoint;
         }
         throw new RuntimeCamelException("Invalid DDS URI: " + uri);

@@ -8,13 +8,18 @@ A collection of tools to automate the process of generating Java classes from ID
 
 **Description**: Generate Java source files from IDL model files.
 
-**Usage**: `compile <inputDirectory> <outputDirectory> <generatedPackage>`
+**Usage**: `compile [--prefix <value>] [--regex <regex>=<replace>]  <inputDirectory> <outputDirectory> <generatedPackage>`
 
 | Parameter          | Default Value     | Description                                |
 | ------------------ | ----------------- | ------------------------------------------ |
 | `inputDirectory`   | `./idl`           | Directory containing IDL files.            |
 | `outputDirectory`  | `./generated-src` | Directory to place generated classes into. |
 | `generatedPackage` | `com.example.idl` | The package name for generated classes.    |
+
+| Option             | Default Value | Description                                             |
+| ------------------ |-------------- | ------------------------------------------------------- |
+| `-p` / `--prefix`  | None          | Package prefix for generated classes.                   |
+| `-r` / `--regex`   | None          | Regular expression to match and replacement text pairs. |
 
 #### Compile
 
@@ -27,9 +32,10 @@ A collection of tools to automate the process of generating Java classes from ID
 | `inputDirectory`  | `./generated-src` | Directory containing source files.         |
 | `outputDirectory` | `./generated-bin` | Directory to place generated classes into. |
 
-| Option           | Description                 |
-| ---------------- | --------------------------- |
-| `-j` / `--jar`   | Package classes into a jar. |
+| Option             | Description                                   |
+| ------------------ | --------------------------------------------- |
+| `-j` / `--jar`     | Package classes into a jar.                   |
+| `-p` / `--process` | Process classes, adding missing `hashCode()`. |
 
 ## Usage
 

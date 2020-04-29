@@ -12,7 +12,7 @@ dependencies {
 	 // If we're past Java 8, add extra imports
     if (JavaVersion.current().ordinal() > 8) {
         compile 'com.sun.activation:javax.activation:1.2.0'
-        implementation "jakarta.xml.bind:jakarta.xml.bind-api:2.3.2"
-        implementation "org.glassfish.jaxb:jaxb-runtime:2.3.2"
+        compile "jakarta.xml.bind:jakarta.xml.bind-api:2.3.2"
+        compile "org.glassfish.jaxb:jaxb-runtime:2.3.2"
     }
 }

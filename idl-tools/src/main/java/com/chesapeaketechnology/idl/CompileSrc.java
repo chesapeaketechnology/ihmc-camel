@@ -1,6 +1,9 @@
 package com.chesapeaketechnology.idl;
 
+import com.chesapeaketechnology.idl.asm.HashCodeGenerator;
 import com.chesapeaketechnology.idl.util.FileUtil;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
@@ -19,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -46,6 +50,8 @@ public class CompileSrc implements Callable<Collection<Path>>
     private File outputDirectory;
     @Option(names = {"-j", "--jar"}, description = "Package classes into a jar")
     private boolean jar;
+    @Option(names = {"-p", "--process"}, description = "Post-process generated classes")
+    private boolean postProcess;
 
     @Override
     public Collection<Path> call() throws Exception
@@ -56,6 +62,10 @@ public class CompileSrc implements Callable<Collection<Path>>
         if (compile())
         {
             moveToOutput();
+        }
+        // Post process classes
+        if (postProcess){
+            postProcess();
         }
         // Generate jar
         String jarMsg = "";
@@ -88,6 +98,30 @@ public class CompileSrc implements Callable<Collection<Path>>
                         CompileSrc::readClass));
         // Save map to jar
         writeToJar(jarFile, classes);
+    }
+
+    /**
+     * Processes the generated classes, adding a {@link #hashCode()} implementation.
+     *
+     * @throws IOException When a class file cannot be read or written to.
+     */
+    private void postProcess() throws IOException
+    {
+        List<Path> classes = Files.walk(outputDirectory.toPath())
+                .filter(path -> path.toString().endsWith(".class"))
+                .collect(Collectors.toList());
+        for (Path classPath : classes) {
+            // Read class bytecode.
+            byte[] code = Files.readAllBytes(classPath);
+            ClassReader reader = new ClassReader(code);
+            // Create a generator/writer pair to insert a hashCode() method
+            // and generate the updated bytecode in one pass.
+            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+            reader.accept(new HashCodeGenerator(writer), ClassReader.SKIP_FRAMES);
+            // Write updated bytecode.
+            // Now we can properly use our generated types in hash-based collections.
+            Files.write(classPath, writer.toByteArray());
+        }
     }
 
     /**
@@ -136,9 +170,13 @@ public class CompileSrc implements Callable<Collection<Path>>
             Iterable<? extends JavaFileObject> compilationUnits =
                     fileManager.getJavaFileObjectsFromFiles(files);
             logger.info("Starting compile task with {} source files", files.size());
+            // Arguments - target 8
+            List<String> args = new ArrayList<>();
+            args.addAll(Arrays.asList("-source", "1.8"));
+            args.addAll(Arrays.asList("-target", "1.8"));
             // Create compile task and execute
             DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-            JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, null, null, compilationUnits);
+            JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, args, null, compilationUnits);
             if (task.call())
             {
                 logger.info("Compilation completed successfully.");

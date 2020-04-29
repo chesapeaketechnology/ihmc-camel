@@ -66,12 +66,18 @@ public class ClientApp implements CommandLineRunner
     {
         ProducerTemplate template = ctx.createProducerTemplate();
         // Setup channel
-        Channel channel = new Channel();
-        channel.setId(0);
-        channel.setName("The only channel");
-        channel.setDescription("Dummy message demo");
-        template.sendBody(ClientRoutes.CHANNEL_OUT, channel);
-        logger.info("Setup channel");
+        int channels = 2;
+        for (int i = 0; i < channels; i++)
+        {
+            sleep(50);
+            String name = String.valueOf(Character.valueOf((char)('A' + i)));
+            Channel channel = new Channel();
+            channel.setId(i);
+            channel.setName("C" + name);
+            channel.setDescription("This is channel " + channel.getNameAsString());
+            template.sendBody(ClientRoutes.CHANNEL_OUT, channel);
+            logger.info("Setup channel: " + i + " (" + channel.getNameAsString() + ")");
+        }
         // Users
         AtomicInteger messageId = new AtomicInteger(0);
         ExecutorService service = Executors.newFixedThreadPool(names.length);
@@ -84,16 +90,16 @@ public class ClientApp implements CommandLineRunner
                 user.setName(names[userId]);
                 template.sendBody(ClientRoutes.USER_OUT, user);
                 logger.info("Setup user '{}'", user.getName());
-                sleep(250);
                 while (true)
                 {
+                    sleep((500 * names.length) + Math.round(Math.random() * 5_000));
+                    int channelId = (int) (Math.random() * channels);
                     Message message = new Message();
                     message.setUserId(user.getId());
-                    message.setChannelId(channel.getId());
+                    message.setChannelId(channelId);
                     message.setMessageId(messageId.getAndIncrement());
                     message.setText(UUID.randomUUID().toString());
                     template.sendBody(ClientRoutes.MESSAGE_OUT, message);
-                    sleep(500);
                 }
             });
             sleep(250);
@@ -105,11 +111,11 @@ public class ClientApp implements CommandLineRunner
      *
      * @param ms Millis to sleep for.
      */
-    private void sleep(int ms)
+    private void sleep(long ms)
     {
         try
         {
-            Thread.sleep(250);
+            Thread.sleep(ms);
         } catch (InterruptedException ex)
         {
             logger.error("Failed to wait: " + ex.getMessage());

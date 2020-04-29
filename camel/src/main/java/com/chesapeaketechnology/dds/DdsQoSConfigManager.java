@@ -1,5 +1,7 @@
 package com.chesapeaketechnology.dds;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import us.ihmc.pubsub.attributes.DurabilityKind;
 import us.ihmc.pubsub.attributes.OwnerShipPolicyKind;
 import us.ihmc.pubsub.attributes.ReliabilityKind;
@@ -22,12 +24,14 @@ public class DdsQoSConfigManager
     public static final String CONFIG_LOW = "low";
     public static final String CONFIG_HIGH = "high";
     private static final Map<String, DdsQosConfig> schemeConfigurations = new HashMap<>();
+    private static final Logger logger = LoggerFactory.getLogger(DdsQoSConfigManager.class);
 
     /**
      * @param config Config to register.
      */
     public static void register(DdsQosConfig config)
     {
+        logger.trace("Register QoS config: {}", config.getName());
         schemeConfigurations.put(config.getName(), config);
     }
 

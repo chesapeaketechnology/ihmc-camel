@@ -16,7 +16,6 @@ public abstract class ChatManager
 {
     private final Map<Integer, Channel> channelMap = new HashMap<>();
     private final Map<Integer, User> userMap = new HashMap<>();
-    private final Map<Integer, Message> messageMap = new HashMap<>();
 
     /**
      * @param channel Channel to register.
@@ -33,27 +32,20 @@ public abstract class ChatManager
     }
 
     /**
-     * @param message Message to register.
-     */
-    public void registerMessage(Message message) {
-        messageMap.put(message.getMessageId(), message);
-    }
-
-    /**
      * Convert a message to a string representation.
      *
      * @param message Message type.
      * @return String representation of type.
      * @throws IllegalStateException When a message was sent to a channel that doesn't exist, or by a user that doesn't exist.
      */
-    public String toString(Message message) throws IllegalStateException {
+    public String messageToString(Message message) throws IllegalStateException {
         // Validate
         if (!channelMap.containsKey(message.getChannelId()))
         {
-            throw new IllegalStateException("Message was sent to channel that does not exist!");
+            throw new IllegalStateException("Message was sent to channel that does not exist: " + message.getChannelId());
         } else if (!userMap.containsKey(message.getUserId()))
         {
-            throw new IllegalStateException("Message was sent by user that does not exist!");
+            throw new IllegalStateException("Message was sent by user that does not exist: " + message.getUserId());
         }
         // Convert to string
         String channel = channelMap.get(message.getChannelId()).getNameAsString();

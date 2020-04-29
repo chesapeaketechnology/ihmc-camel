@@ -1,3 +1,8 @@
+# Generated files
+idl-tools/generated-bin
+idl-tools/generated-src
+*.jar
+
 # Gradle files
 .gradle
 .gradletasknamecache
@@ -10,7 +15,3 @@ gradle-app.setting
 
 # IntelliJ files
 .idea
-
-# Generated files
-idl-tools/generated-bin
-idl-tools/generated-src

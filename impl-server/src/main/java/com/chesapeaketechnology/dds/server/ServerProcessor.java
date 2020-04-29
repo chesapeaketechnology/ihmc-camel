@@ -35,8 +35,7 @@ public class ServerProcessor extends ChatManager implements Processor
         } else if (body instanceof Message)
         {
             Message message = (Message) body;
-            registerMessage(message);
-            logger.info(toString(message));
+            logger.info(messageToString(message));
         }
     }
 }

@@ -1,4 +1,4 @@
-# IHMC-Camel
+# IHMC-Camel [![Build Status](https://travis-ci.com/chesapeaketechnology/ihmc-camel.svg?token=hD4AtTH6ehH3aM5obZou&branch=master)](https://travis-ci.com/chesapeaketechnology/ihmc-camel)
 
 Camel component utilizing the IHMC pub-sub libraries
 

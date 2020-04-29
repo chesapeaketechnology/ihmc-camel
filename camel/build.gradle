@@ -1,9 +1,32 @@
 plugins {
     id 'java'
+    id 'maven'
+}
+
+ext {
+    junit_ver = "5.6.2"
+    camel_ver = "3.2.0"
+}
+
+task fatJar(type: Jar) {
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
 }
 
 dependencies {
-    // compile-only as we won't want to include these in the packaged output for deployment
-    compileOnly group: 'javax.enterprise', name: 'cdi-api', version: '2.0'
-    compileOnly group: 'org.apache.camel', name: 'camel-core', version: '3.2.0'
+    // implementation as we won't want to include these in the packaged output for deployment
+    implementation group: 'javax.enterprise', name: 'cdi-api', version: '2.0'
+    implementation group: 'org.apache.camel', name: 'camel-core', version: "${camel_ver}"
+
+    testImplementation group: 'org.apache.camel', name: 'camel-test-junit5', version: "${camel_ver}"
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: "${junit_ver}"
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: "${junit_ver}"
+    testImplementation group: 'org.mockito', name: 'mockito-junit-jupiter', version: '3.3.3'
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+    }
 }

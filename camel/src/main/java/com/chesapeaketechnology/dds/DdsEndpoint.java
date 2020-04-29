@@ -7,6 +7,8 @@ import org.apache.camel.Processor;
 import org.apache.camel.Producer;
 import org.apache.camel.spi.UriEndpoint;
 import org.apache.camel.support.DefaultEndpoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import us.ihmc.pubsub.Domain;
 import us.ihmc.pubsub.DomainFactory;
 import us.ihmc.pubsub.TopicDataType;
@@ -31,11 +33,14 @@ import java.io.IOException;
 public class DdsEndpoint extends DefaultEndpoint
 {
     private static final Domain DOMAIN = DomainFactory.getDomain(DomainFactory.PubSubImplementation.FAST_RTPS);
+    private static final Logger logger = LoggerFactory.getLogger(DdsConsumer.class);
     private final String topicName;
     private final String messageType;
     private final int domainId;
     private final TopicDataType topicDataType;
     private final DdsQosConfig config;
+    private final boolean reuse;
+    private Participant participant;
     private Publisher publisher;
     private Subscriber subscriber;
 
@@ -49,9 +54,10 @@ public class DdsEndpoint extends DefaultEndpoint
      * @param domainId      Domain identifier.
      * @param topicDataType Serializer/deserializer for the data type of this endpoint.
      * @param config        Quality of service configuration. May be {@code null} for defaults.
+     * @param reuse         {@code true} when message structures will be reused.
      */
     public DdsEndpoint(String uri, DdsCamelComponent component, String topicName, String messageType,
-                       int domainId, TopicDataType topicDataType, DdsQosConfig config)
+                       int domainId, TopicDataType topicDataType, DdsQosConfig config, boolean reuse)
     {
         super(uri, component);
         this.topicName = topicName;
@@ -59,18 +65,28 @@ public class DdsEndpoint extends DefaultEndpoint
         this.domainId = domainId;
         this.topicDataType = topicDataType;
         this.config = config;
+        this.reuse = reuse;
     }
 
     @Override
     public Producer createProducer() throws Exception
     {
+        logger.trace("Create new producer for endpoint: {}", getEndpointUri());
         return new DdsProducer(this);
     }
 
     @Override
     public Consumer createConsumer(Processor processor) throws Exception
     {
-        return new DdsConsumer(this, processor);
+        logger.trace("Create new consumer for endpoint: {}", getEndpointUri());
+        // Determine consumer impl based on if we want to re-use message structures.
+        if (reuse)
+        {
+            return new DdsReusingConsumer(this, processor);
+        } else
+        {
+            return new DdsConsumer(this, processor);
+        }
     }
 
     /**
@@ -83,8 +99,7 @@ public class DdsEndpoint extends DefaultEndpoint
     {
         if (publisher == null)
         {
-            ParticipantAttributes attributes = DOMAIN.createParticipantAttributes(domainId, topicName);
-            Participant participant = DOMAIN.createParticipant(attributes);
+            Participant participant = getParticipant();
             PublisherAttributes publisherAttributes =
                     DOMAIN.createPublisherAttributes(participant, topicDataType, topicName, ReliabilityKind.RELIABLE);
             if (config != null)
@@ -111,8 +126,7 @@ public class DdsEndpoint extends DefaultEndpoint
     {
         if (subscriber == null)
         {
-            ParticipantAttributes attributes = DOMAIN.createParticipantAttributes(domainId, topicName);
-            Participant participant = DOMAIN.createParticipant(attributes);
+            Participant participant = getParticipant();
             SubscriberAttributes subscriberAttributes =
                     DOMAIN.createSubscriberAttributes(participant, topicDataType, topicName, ReliabilityKind.RELIABLE);
             if (config != null)
@@ -126,12 +140,29 @@ public class DdsEndpoint extends DefaultEndpoint
         return subscriber;
     }
 
+    /**
+     * @return Participant for this endpoint.
+     * @throws IOException When the participant cannot be created.
+     */
+    private Participant getParticipant() throws IOException
+    {
+        if (participant == null) {
+            logger.trace("Creating participant for endpoint: {}", getEndpointUri());
+            ParticipantAttributes attributes = DOMAIN.createParticipantAttributes(domainId, topicName);
+            participant = DOMAIN.createParticipant(attributes);
+            logger.trace(" - Participant created: {}", participant.getGuid());
+
+        }
+        return participant;
+    }
+
     @Override
     protected void doStop() throws Exception
     {
         super.doStop();
-        // Removes all participants
-        DOMAIN.stopAll();
+        // Removes our participant
+        logger.trace("Stopping endpoint({}). Removing participant({}) from domain.", getEndpointUri(), getParticipant().getGuid());
+        DOMAIN.removeParticipant(getParticipant());
     }
 
     /**
@@ -145,5 +176,13 @@ public class DdsEndpoint extends DefaultEndpoint
         Exchange exchange = createExchange(ExchangePattern.InOnly);
         exchange.setIn(new DdsMessage(exchange, object));
         return exchange;
+    }
+
+    /**
+     * @return Fully {@link Class#getName() qualified name} of the data type of this endpoint.
+     */
+    public String getMessageType()
+    {
+        return messageType;
     }
 }

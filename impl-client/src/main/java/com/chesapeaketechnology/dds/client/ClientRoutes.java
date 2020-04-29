@@ -18,10 +18,14 @@ import static com.chesapeaketechnology.dds.DdsUriBuilder.create;
 @Component
 public class ClientRoutes extends RouteBuilder
 {
-    public static final String CHANNEL_OUT = create().domain(0).content(Channel.class).quality(DdsQoSConfigManager.CONFIG_HIGH).toString();
-    public static final String USER_OUT = create().domain(0).content(User.class).quality(DdsQoSConfigManager.CONFIG_HIGH).toString();
-    public static final String MESSAGE_OUT = create().domain(0).content(Message.class).quality(DdsQoSConfigManager.CONFIG_HIGH).toString();
-    public static final String MESSAGE_IN = create().domain(1).content(Message.class).quality(DdsQoSConfigManager.CONFIG_HIGH).toString();
+    public static final String CHANNEL_OUT = create().domain(0)
+            .content(Channel.class).quality(DdsQoSConfigManager.CONFIG_HIGH).toString();
+    public static final String USER_OUT = create().domain(0)
+            .content(User.class).quality(DdsQoSConfigManager.CONFIG_HIGH).toString();
+    public static final String MESSAGE_OUT = create().domain(0)
+            .content(Message.class).quality(DdsQoSConfigManager.CONFIG_HIGH).reuseMessageStructures().toString();
+    public static final String MESSAGE_IN = create().domain(1)
+            .content(Message.class).quality(DdsQoSConfigManager.CONFIG_HIGH).reuseMessageStructures().toString();
 
     @Override
     public void configure() throws Exception

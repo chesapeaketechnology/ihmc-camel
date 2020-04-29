@@ -18,8 +18,8 @@ import us.ihmc.pubsub.subscriber.SubscriberListener;
 @SuppressWarnings("rawtypes")
 public class DdsConsumer extends DefaultConsumer implements SubscriberListener
 {
-    private static final Logger logger = LoggerFactory.getLogger(DdsProducer.class);
-    private final DdsEndpoint endpoint;
+    private static final Logger logger = LoggerFactory.getLogger(DdsConsumer.class);
+    protected final DdsEndpoint endpoint;
 
     /**
      * Create the camel consumer.
@@ -33,11 +33,18 @@ public class DdsConsumer extends DefaultConsumer implements SubscriberListener
         this.endpoint = endpoint;
     }
 
-    private void onReceive(Object object)
+    /**
+     * Handle received idl type.
+     *
+     * @param data Received object.
+     */
+    protected void onReceive(Object data)
     {
-        Exchange exchange = endpoint.toExchange(object);
+        Exchange exchange = endpoint.toExchange(data);
         try
         {
+            logger.trace("Processing for endpoint: '{}' - Value: {}",
+                    endpoint.getEndpointUri(), data.toString());
             getProcessor().process(exchange);
             if (exchange.isFailed() && exchange.getException() != null)
             {
@@ -45,21 +52,24 @@ public class DdsConsumer extends DefaultConsumer implements SubscriberListener
             }
         } catch (Exception ex)
         {
-            logger.error("Error in processing DDSI message", ex);
+            logger.error("Error in processing DDS message", ex);
         }
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void onNewDataMessage(Subscriber subscriber)
     {
-        // Handle received data
+        logger.debug("Receive new data message for endpoint '{}': Guid={}",
+                endpoint.getEndpointUri(), subscriber.getGuid());
         onReceive(subscriber.takeNextData());
     }
 
     @Override
     public void onSubscriptionMatched(Subscriber subscriber, MatchingInfo info)
     {
-        // Do nothing
+        logger.debug("Subscription matched for endpoint '{}': Guid={} - Status={}",
+                endpoint.getEndpointUri(), subscriber.getGuid(), info.getStatus().name());
     }
 
     @Override

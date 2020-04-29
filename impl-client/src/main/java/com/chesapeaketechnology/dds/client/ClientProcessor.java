@@ -25,8 +25,7 @@ public class ClientProcessor extends ChatManager implements Processor
         if (body instanceof Message)
         {
             Message message = (Message) body;
-            registerMessage(message);
-            logger.info(toString(message));
+            logger.info(messageToString(message));
         } else if (body instanceof Channel)
         {
             Channel channel = (Channel) body;

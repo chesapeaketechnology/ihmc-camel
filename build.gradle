@@ -14,6 +14,9 @@ allprojects {
     apply plugin: 'checkstyle'
     checkstyle {
         configFile file("${rootDir}/config/checkstyle/checkstyle.xml")
+        sourceSets = [project.sourceSets.main]
+        ignoreFailures = false
+        maxWarnings = 0
     }
 
     plugins.withType(JavaPlugin) {
@@ -21,7 +24,7 @@ allprojects {
         targetCompatibility = 1.8
 
         ext {
-            ihmc_version = '0.14.0'
+            ihmc_version = "0.14.0"
         }
 
         dependencies {

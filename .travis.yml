@@ -1,0 +1,41 @@
+language: java
+install: true
+sudo: false
+
+before_install:
+  - chmod +x gradlew
+  - chmod +x gradle/wrapper/gradle-wrapper.jar
+  # https://askubuntu.com/questions/575505/glibcxx-3-4-20-not-found-how-to-fix-this-error
+  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+  - sudo apt-get update
+  - sudo apt-get install libstdc++6
+
+stages:
+  - name: build
+  # - name: deploy-snapshot
+  #   # only publish snapshots from "master" branch and not in pull requests
+  #   if: branch = develop AND type IN (push)
+  # - name: deploy-release
+  #   # only publish releases from "release" branch and not in pull requests
+  #   if: branch = master AND type IN (push)
+
+jobs:
+  include:
+    # run gradle build
+    - stage: build
+      jdk: openjdk8
+      script: ./gradlew clean :camel:build
+
+    # publish snapshot to oss.jfrog.org
+    # - stage: deploy-snapshot
+    #   jdk: openjdk8
+    #   script: ./gradlew :camel:artifactoryPublish -Dsnapshot=true -Dbintray.user=$BINTRAY_USER -Dbintray.key=$BINTRAY_KEY -Dbuild.number=$TRAVIS_BUILD_NUMBER
+
+    # release a new stable version to bintray
+    # - stage: deploy-release
+    #   jdk: openjdk8
+    #   script: ./gradlew :camel:bintrayUpload -Dbintray.user=$BINTRAY_USER -Dbintray.key=$BINTRAY_KEY -Dbuild.number=$TRAVIS_BUILD_NUMBER
+
+# Less inbox spam
+notifications:
+    email: false

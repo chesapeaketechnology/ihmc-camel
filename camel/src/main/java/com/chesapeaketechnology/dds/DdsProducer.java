@@ -2,6 +2,8 @@ package com.chesapeaketechnology.dds;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.support.DefaultProducer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import us.ihmc.pubsub.publisher.Publisher;
 
 /**
@@ -11,6 +13,7 @@ import us.ihmc.pubsub.publisher.Publisher;
  */
 public class DdsProducer extends DefaultProducer
 {
+    private static final Logger logger = LoggerFactory.getLogger(DdsProducer.class);
     private final DdsEndpoint endpoint;
     private Publisher publisher;
 
@@ -29,6 +32,7 @@ public class DdsProducer extends DefaultProducer
     public void process(Exchange exchange) throws Exception
     {
         // Send message content to publisher
+        logger.trace("Publishing for endpoint: '{}' - Value: {}", endpoint.getEndpointUri(), exchange.getIn().getBody().toString());
         publisher.write(exchange.getIn().getBody());
     }
 

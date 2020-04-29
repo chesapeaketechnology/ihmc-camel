@@ -17,7 +17,7 @@ task generateSources(dependsOn: classes, type: JavaExec) {
 task compileSources(dependsOn: generateSources, type: JavaExec) {
     main = mainClassName
     classpath = sourceSets.main.runtimeClasspath
-    args 'compile', '--jar'
+    args 'compile', '--jar', '--process'
 }
 // Task to compile the idl-tools into a runnable program
 task fatJar(type: Jar) {
@@ -31,4 +31,5 @@ task fatJar(type: Jar) {
 dependencies {
     compile group: "us.ihmc", name: "ihmc-pub-sub-generator", version: "$ihmc_version"
     compile group: 'info.picocli', name: 'picocli', version: '4.2.0'
+    compile group: 'org.ow2.asm', name: 'asm', version: '8.0.1'
 }

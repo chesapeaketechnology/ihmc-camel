@@ -9,6 +9,8 @@ import java.util.stream.Collectors;
 
 /**
  * NIO File utilities.
+ *
+ * @author Copyright &#169; 2020 Chesapeake Technology International Corp.
  */
 public class FileUtil
 {

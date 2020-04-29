@@ -1,20 +1,27 @@
+module com {
+module example {
+module idl {
 module messaging {
-	@Topic
+
 	struct Channel {
-		@Key long id;
+		long id;
 		string name;
 		string description;
 	};
 
 	struct User {
-		@Key long id;
+		long id;
 		string name;
 	};
 
 	struct Message {
-		@Key long messageId;
-		@Key long channelId;
+		long messageId;
+		long channelId;
 		long userId;
 		string text;
 	};
+	
+};
+};
+};
 };

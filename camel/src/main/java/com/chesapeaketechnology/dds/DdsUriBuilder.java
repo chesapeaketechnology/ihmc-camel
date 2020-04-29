@@ -11,6 +11,7 @@ public class DdsUriBuilder
     private DdsQosConfig config;
     private Class<?> type;
     private String domain = "0";
+    private boolean reuse;
 
     // Deny constructor access
     private DdsUriBuilder()
@@ -31,7 +32,14 @@ public class DdsUriBuilder
      */
     public DdsUriBuilder quality(String name)
     {
-        return quality(DdsQoSConfigManager.getConfig(name));
+        DdsQosConfig config = DdsQoSConfigManager.getConfig(name);
+        // Validate the config was loaded
+        if (config == null)
+        {
+            throw new IllegalStateException("No configuration with the name '" + name +
+                    "' exists in the manager!");
+        }
+        return quality(config);
     }
 
     /**
@@ -41,6 +49,12 @@ public class DdsUriBuilder
     public DdsUriBuilder quality(DdsQosConfig config)
     {
         this.config = config;
+        // Register the config if it has not been registered.
+        // This will allow the camel component to look up the config properly.
+        if (DdsQoSConfigManager.getConfig(config.getName()) == null)
+        {
+            DdsQoSConfigManager.register(config);
+        }
         return this;
     }
 
@@ -73,8 +87,23 @@ public class DdsUriBuilder
         return this;
     }
 
-    @Override
-    public String toString()
+    /**
+     * Activate message structure reuse.
+     * This is useful for saving memory when the message type is not a dependency of other message types,
+     * or if the message type will always have the same value.
+     *
+     * @return DDS URI builder.
+     */
+    public DdsUriBuilder reuseMessageStructures()
+    {
+        this.reuse = true;
+        return this;
+    }
+
+    /**
+     * @return Generated URI baseline. Does not contain parameters even if a {@link DdsQosConfig} is specified.
+     */
+    public String getBaseUri()
     {
         // Validate
         if (domain == null)
@@ -88,11 +117,32 @@ public class DdsUriBuilder
         // Create URI
         String topic = type.getSimpleName();
         String typeName = type.getName();
-        String uri = SCHEME + ":" + topic + ":" + domain + "/" + typeName;
+        return SCHEME + ":" + topic + ":" + domain + "/" + typeName;
+    }
+
+    /**
+     * @return Full generated URI. Will contain parameters if {@link #reuseMessageStructures()} has been called
+     * or if a {@link DdsQosConfig} is specified.
+     */
+    public String getUri()
+    {
+        String uri = getBaseUri();
+        String next = "?";
         if (config != null)
         {
-            uri += "?qos=" + config.getName();
+            uri += next + "qos=" + config.getName();
+            next = "&";
+        }
+        if (reuse)
+        {
+            uri += next + "reuse=true";
         }
         return uri;
+    }
+
+    @Override
+    public String toString()
+    {
+        return getUri();
     }
 }
