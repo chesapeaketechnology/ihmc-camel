@@ -20,6 +20,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Task to generate source files from IDL. Task yields the paths of the generated files.
@@ -31,6 +34,7 @@ import java.util.concurrent.Callable;
 public class GenerateSrc implements Callable<Collection<Path>>
 {
     private static final Logger logger = LoggerFactory.getLogger(GenerateSrc.class);
+    private static final Pattern includePattern = Pattern.compile("#include\\s<([\\w]+)\\.idl>");
     @Parameters(index = "0", description = "The directory containing IDL files.", defaultValue = "idl")
     private File inputDirectory;
     @Parameters(index = "1", description = "The directory to place generated classes into.", defaultValue = "generated-src")
@@ -65,63 +69,82 @@ public class GenerateSrc implements Callable<Collection<Path>>
     private void generate() throws IOException
     {
         Collection<Path> idlPaths = FileUtil.getPathsWithExtension(inputDirectory.toPath(), "idl");
+        Function<Path, Path> pathFunction = in -> in.getParent().resolve(in.getFileName().toString().replace(".idl", "_patch.idl"));
         logger.info("Generating IDL source mappings from directory: {}\n - Found {} files", inputDirectory.getPath(), idlPaths.size());
-        for (Path idl : idlPaths)
+        try
         {
-            logger.info("Generating for '{}'", idl.toString());
-            if (requiresPatching())
+            generatePatchedIdl(idlPaths, pathFunction);
+            for (Path idl : idlPaths)
             {
-                // Create a temporary idl file path to write patched idl to.
-                Path idlPatched = idl.getParent()
-                        .resolve(idl.getFileName().toString().replace(".idl", "-patch.idl"));
-                try
-                {
-                    // Generate updated idl source with regular expressions applied
-                    generatePatchedIdl(idl, idlPatched);
-                    // Compile patched file
-                    IDLGenerator.execute(idlPatched.toFile(),
-                            generatedPackage,
-                            outputDirectory,
-                            Collections.singletonList(inputDirectory));
-                } finally
-                {
-                    // Remove temporary patched file
-                    if (!idl.equals(idlPatched))
-                    {
-                        FileTools.deleteQuietly(idlPatched);
-                    }
-                }
-            } else
-            {
-                IDLGenerator.execute(idl.toFile(),
+                logger.info("- Generating for '{}'", idl.toString());
+                Path input = requiresPatching() ? pathFunction.apply(idl) : idl;
+                IDLGenerator.execute(input.toFile(),
                         generatedPackage,
                         outputDirectory,
                         Collections.singletonList(inputDirectory));
             }
+        } finally
+        {
+            cleanGeneratedPatchedIdl(idlPaths, pathFunction);
         }
     }
 
     /**
-     * Generate a patched idl file.
-     *
-     * @param source      Path to original idl file.
-     * @param destination Path to patched idl file.
-     * @throws IOException When the source file cannot be read, or the destination cannot be written to.
+     * @param idlPaths     Collection of input idl paths.
+     * @param pathFunction Function to convert to temporary patched idl path.
+     * @throws IOException When a source file cannot be read, or a destination cannot be written to.
      */
-    private void generatePatchedIdl(Path source, Path destination) throws IOException
+    private void generatePatchedIdl(Collection<Path> idlPaths, Function<Path, Path> pathFunction) throws IOException
     {
-        // Get original source of the idl
-        String[] idlSource = {new String(Files.readAllBytes(source))};
-        String original = idlSource[0];
-        // Apply all patches
-        regexReplacementMap.forEach((patternStr, replacement) -> {
-            idlSource[0] = idlSource[0].replaceAll(patternStr, replacement);
-        });
-        // Write patched source to destination idl
-        String modified = idlSource[0];
-        logger.debug(" - Applied changes, size diff {}", (original.length() - modified.length()));
-        byte[] patchedBytes = modified.getBytes(StandardCharsets.UTF_8);
-        Files.write(destination, patchedBytes, StandardOpenOption.CREATE);
+        // Skip if no patching needed
+        if (!requiresPatching())
+        {
+            return;
+        }
+        // Generate updated idl source with regular expressions applied
+        logger.info("- Creating patched idl files");
+        for (Path idl : idlPaths)
+        {
+            // Get original source of the idl
+            String[] idlSource = {new String(Files.readAllBytes(idl))};
+            String original = idlSource[0];
+            // Apply all custom patches
+            regexReplacementMap.forEach((patternStr, replacement) -> {
+                idlSource[0] = idlSource[0].replaceAll(patternStr, replacement);
+            });
+            // Apply patch to includes
+            Matcher m = includePattern.matcher(idlSource[0]);
+            while (m.find())
+            {
+                idlSource[0] = idlSource[0].replace(m.group(), m.group(1));
+            }
+            // Write patched source to destination idl
+            String modified = idlSource[0];
+            logger.debug(" - Applied changes to {}, size diff {}", idl, (original.length() - modified.length()));
+            byte[] patchedBytes = modified.getBytes(StandardCharsets.UTF_8);
+            Files.write(pathFunction.apply(idl), patchedBytes, StandardOpenOption.CREATE);
+        }
+    }
+
+    /**
+     * Delete all temporary patched idl files.
+     *
+     * @param idlPaths     Collection of input idl paths.
+     * @param pathFunction Function to convert to temporary patched idl path.
+     */
+    private void cleanGeneratedPatchedIdl(Collection<Path> idlPaths, Function<Path, Path> pathFunction)
+    {
+        // Skip if no patching needed
+        if (!requiresPatching())
+        {
+            return;
+        }
+        logger.info("- Cleaning patched idl files");
+        for (Path idl : idlPaths)
+        {
+            // Generate updated idl source with regular expressions applied
+            FileTools.deleteQuietly(pathFunction.apply(idl));
+        }
     }
 
     /**

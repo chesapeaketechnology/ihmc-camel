@@ -1,14 +1,10 @@
 package com.chesapeaketechnology.idl;
 
-import com.chesapeaketechnology.idl.asm.HashCodeGenerator;
 import com.chesapeaketechnology.idl.util.FileUtil;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
-import picocli.CommandLine.Option;
 import us.ihmc.commons.nio.FileTools;
 
 import javax.tools.DiagnosticCollector;
@@ -17,22 +13,14 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.Callable;
-import java.util.jar.JarEntry;
-import java.util.jar.JarOutputStream;
-import java.util.stream.Collectors;
 
 /**
  * Task to generate source files from IDL. Task yields the paths of the generated files.
@@ -48,10 +36,6 @@ public class CompileSrc implements Callable<Collection<Path>>
     private File inputDirectory;
     @Parameters(index = "1", description = "The directory to place generated classes into.", defaultValue = "generated-bin")
     private File outputDirectory;
-    @Option(names = {"-j", "--jar"}, description = "Package classes into a jar")
-    private boolean jar;
-    @Option(names = {"-p", "--process"}, description = "Post-process generated classes")
-    private boolean postProcess;
 
     @Override
     public Collection<Path> call() throws Exception
@@ -63,65 +47,10 @@ public class CompileSrc implements Callable<Collection<Path>>
         {
             moveToOutput();
         }
-        // Post process classes
-        if (postProcess){
-            postProcess();
-        }
-        // Generate jar
-        String jarMsg = "";
-        if (jar)
-        {
-            packageOutput();
-            jarMsg = "\n - Packed into jar";
-        }
         // Return collection of paths to generated files
         Collection<Path> classPaths = FileUtil.getPathsWithExtension(outputDirectory.toPath(), "class");
-        logger.info("Done!\n - Generated {} class files" + jarMsg, classPaths.size());
+        logger.info("Done!\n - Generated {} class files", classPaths.size());
         return classPaths;
-    }
-
-    /**
-     * Package output into a jar.
-     *
-     * @throws IOException When the output directory cannot be parsed, or when the jar cannot be written to.
-     */
-    private void packageOutput() throws IOException
-    {
-        // Log destination jar
-        File jarFile = new File(outputDirectory, "generated.jar");
-        logger.info("Packaging classes into '{}'", jarFile.getPath());
-        // Convert output directory to map.
-        Map<String, byte[]> classes = Files.walk(outputDirectory.toPath())
-                .filter(path -> path.toString().endsWith(".class"))
-                .collect(Collectors.toMap(
-                        p -> outputDirectory.toPath().relativize(p).toString().replace(File.separator, "/"),
-                        CompileSrc::readClass));
-        // Save map to jar
-        writeToJar(jarFile, classes);
-    }
-
-    /**
-     * Processes the generated classes, adding a {@link #hashCode()} implementation.
-     *
-     * @throws IOException When a class file cannot be read or written to.
-     */
-    private void postProcess() throws IOException
-    {
-        List<Path> classes = Files.walk(outputDirectory.toPath())
-                .filter(path -> path.toString().endsWith(".class"))
-                .collect(Collectors.toList());
-        for (Path classPath : classes) {
-            // Read class bytecode.
-            byte[] code = Files.readAllBytes(classPath);
-            ClassReader reader = new ClassReader(code);
-            // Create a generator/writer pair to insert a hashCode() method
-            // and generate the updated bytecode in one pass.
-            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-            reader.accept(new HashCodeGenerator(writer), ClassReader.SKIP_FRAMES);
-            // Write updated bytecode.
-            // Now we can properly use our generated types in hash-based collections.
-            Files.write(classPath, writer.toByteArray());
-        }
     }
 
     /**
@@ -206,73 +135,5 @@ public class CompileSrc implements Callable<Collection<Path>>
         logger.info("Clearing output directory");
         FileTools.deleteQuietly(outputDirectory.toPath());
         outputDirectory.mkdirs();
-    }
-
-    /**
-     * Writes a map to an archive.
-     *
-     * @param output  File location of jar.
-     * @param content Contents to write to location.
-     * @throws IOException When the jar file cannot be written to.
-     */
-    private static void writeToJar(File output, Map<String, byte[]> content) throws IOException
-    {
-        try (JarOutputStream jos = new JarOutputStream(new FileOutputStream(output)))
-        {
-            Set<String> dirsVisited = new HashSet<>();
-            // We wrap the passed map in a "TreeMap" because it's a sorted-map type.
-            // This means the iteration order is filtered by the key.
-            // This is just so the archive is structured properly where entries aren't in random order.
-            for (Map.Entry<String, byte[]> entry : new TreeMap<>(content).entrySet())
-            {
-                String key = entry.getKey();
-                byte[] out = entry.getValue();
-                // Write directories for upcoming entries if necessary.
-                if (key.contains("/"))
-                {
-                    // Record directories
-                    String parent = key;
-                    List<String> toAdd = new ArrayList<>();
-                    do
-                    {
-                        parent = parent.substring(0, parent.lastIndexOf('/'));
-                        if (dirsVisited.add(parent))
-                        {
-                            toAdd.add(0, parent + '/');
-                        } else
-                        {
-                            break;
-                        }
-                    } while (parent.contains("/"));
-                    // Put directories in order of depth
-                    for (String dir : toAdd)
-                    {
-                        jos.putNextEntry(new JarEntry(dir));
-                        jos.closeEntry();
-                    }
-                }
-                // Write entry content
-                jos.putNextEntry(new JarEntry(key));
-                jos.write(out);
-                jos.closeEntry();
-            }
-        }
-    }
-
-    /**
-     * Silent version of {@link Files#readAllBytes(Path)}.
-     *
-     * @param path Path to read.
-     * @return Raw contents of file at path.
-     */
-    private static byte[] readClass(Path path)
-    {
-        try
-        {
-            return Files.readAllBytes(path);
-        } catch (IOException ex)
-        {
-            throw new IllegalStateException("Failed to read class's contents", ex);
-        }
     }
 }

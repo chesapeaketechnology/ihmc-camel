@@ -6,13 +6,15 @@ import picocli.CommandLine.Command;
 import java.util.concurrent.Callable;
 
 /**
- * Root command handler, wrapper for {@link GenerateSrc} and {@link CompileSrc}.
+ * Root command handler, wrapper for {@link GenerateSrc}, {@link CompileSrc}, {@link Pack}, and {@link Process}.
  *
  * @author Copyright &#169; 2020 Chesapeake Technology International Corp.
  */
 @Command(subcommands = {
         GenerateSrc.class,
-        CompileSrc.class
+        CompileSrc.class,
+        Pack.class,
+        Process.class
 })
 public class Tool implements Callable<Void>
 {

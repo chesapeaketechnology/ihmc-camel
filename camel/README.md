@@ -6,6 +6,19 @@ A camel component for DDS using IHMC pub-sub-group.
 
 The DDS component requires Camel version `3.0.0` or later.
 
+### Dependency
+
+Add the IHMC repository:
+```groovy
+ maven {
+    url "https://dl.bintray.com/ihmcrobotics/maven-release/"
+}
+```
+Add the camel component dependency, where `dds_camel_version` is the latest artifact version:
+```groovy
+implementation("com.chesapeaketechnology:dds:${dds_camel_version}")
+```
+
 ### Camel Component
 
 **Auto-discovery with Spring Boot**: 

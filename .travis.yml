@@ -24,17 +24,17 @@ jobs:
     # run gradle build
     - stage: build
       jdk: openjdk8
-      script: ./gradlew clean :camel:build
+      script: ./gradlew clean :camel:build :idl-tools:build
 
-    # publish snapshot to oss.jfrog.org
+    # publish camel-snapshot to oss.jfrog.org
     # - stage: deploy-snapshot
     #   jdk: openjdk8
-    #   script: ./gradlew :camel:artifactoryPublish -Dsnapshot=true -Dbintray.user=$BINTRAY_USER -Dbintray.key=$BINTRAY_KEY -Dbuild.number=$TRAVIS_BUILD_NUMBER
+    #   script: ./gradlew :idl-tools:artifactoryPublish :camel:artifactoryPublish -Dsnapshot=true -Dbintray.user=$BINTRAY_USER -Dbintray.key=$BINTRAY_KEY -Dbuild.number=$TRAVIS_BUILD_NUMBER
 
-    # release a new stable version to bintray
+    # release a new camel-stable version to bintray
     # - stage: deploy-release
     #   jdk: openjdk8
-    #   script: ./gradlew :camel:bintrayUpload -Dbintray.user=$BINTRAY_USER -Dbintray.key=$BINTRAY_KEY -Dbuild.number=$TRAVIS_BUILD_NUMBER
+    #   script: ./gradlew :idl-tools:bintrayUpload :camel:bintrayUpload -Dbintray.user=$BINTRAY_USER -Dbintray.key=$BINTRAY_KEY -Dbuild.number=$TRAVIS_BUILD_NUMBER
 
 # Less inbox spam
 notifications:

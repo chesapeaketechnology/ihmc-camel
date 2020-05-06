@@ -3,6 +3,8 @@ plugins {
 }
 
 allprojects {
+    version = '1.0.0'
+
     repositories {
         flatDir dirs: "${rootDir}/libs"
         mavenCentral()
@@ -12,6 +14,7 @@ allprojects {
     }
 
     apply plugin: 'checkstyle'
+    apply plugin: 'maven-publish'
     checkstyle {
         configFile file("${rootDir}/config/checkstyle/checkstyle.xml")
         sourceSets = [project.sourceSets.main]
@@ -31,8 +34,4 @@ allprojects {
             compile (group: "us.ihmc", name: "ihmc-pub-sub", version: "$ihmc_version")
         }
     }
-}
-
-subprojects {
-    version = '1.0.0'
 }

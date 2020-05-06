@@ -28,6 +28,31 @@ task fatJar(type: Jar) {
     with jar
 }
 
+task sourceJar(type: Jar) {
+    classifier "sources"
+    from sourceSets.main.allJava
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier "javadoc"
+    from javadoc
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+
+            groupId = 'com.chesapeaketechnology'
+            artifactId = 'idl'
+            version = rootProject.version
+
+            artifact tasks.sourceJar
+            artifact tasks.javadocJar
+        }
+    }
+}
+
 dependencies {
     compile group: "us.ihmc", name: "ihmc-pub-sub-generator", version: "$ihmc_version"
     compile group: 'info.picocli', name: 'picocli', version: '4.2.0'

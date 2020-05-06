@@ -8,9 +8,34 @@ ext {
     camel_ver = "3.2.0"
 }
 
+task sourceJar(type: Jar) {
+    classifier "sources"
+    from sourceSets.main.allJava
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier "javadoc"
+    from javadoc
+}
+
 task fatJar(type: Jar) {
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+
+            groupId = 'com.chesapeaketechnology'
+            artifactId = 'dds'
+            version = rootProject.version
+
+            artifact tasks.sourceJar
+            artifact tasks.javadocJar
+        }
+    }
 }
 
 dependencies {
