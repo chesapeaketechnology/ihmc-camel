@@ -3,6 +3,7 @@ package com.chesapeaketechnology.dds;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import us.ihmc.pubsub.attributes.DurabilityKind;
+import us.ihmc.pubsub.attributes.HistoryQosPolicy;
 import us.ihmc.pubsub.attributes.OwnerShipPolicyKind;
 import us.ihmc.pubsub.attributes.ReliabilityKind;
 
@@ -63,14 +64,18 @@ public class DdsQoSConfigManager
                 CONFIG_LOW,
                 ReliabilityKind.BEST_EFFORT,
                 DurabilityKind.VOLATILE_DURABILITY_QOS,
-                OwnerShipPolicyKind.SHARED_OWNERSHIP_QOS
+                OwnerShipPolicyKind.SHARED_OWNERSHIP_QOS,
+                HistoryQosPolicy.HistoryQosPolicyKind.KEEP_LAST_HISTORY_QOS,
+                null // LivelinessQosPolicyKind
         ));
         // Setup high priority config
         register(new DdsQosConfig(
                 CONFIG_HIGH,
                 ReliabilityKind.RELIABLE,
                 DurabilityKind.TRANSIENT_LOCAL_DURABILITY_QOS,
-                OwnerShipPolicyKind.EXCLUSIVE_OWNERSHIP_QOS
+                OwnerShipPolicyKind.EXCLUSIVE_OWNERSHIP_QOS,
+                HistoryQosPolicy.HistoryQosPolicyKind.KEEP_ALL_HISTORY_QOS,
+                null // LivelinessQosPolicyKind
         ));
     }
 }

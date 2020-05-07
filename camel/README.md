@@ -35,7 +35,7 @@ context.addRoutes(new MyRouteBuilder());
 context.start();
 ```
 
-###Routes
+### Routes
 
 Camel routes for DDS follow the given pattern: `dds:<topic>:<domain>/<typeName>`
 

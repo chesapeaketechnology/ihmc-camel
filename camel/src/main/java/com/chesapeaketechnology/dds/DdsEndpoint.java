@@ -13,9 +13,7 @@ import us.ihmc.pubsub.Domain;
 import us.ihmc.pubsub.DomainFactory;
 import us.ihmc.pubsub.TopicDataType;
 import us.ihmc.pubsub.attributes.ParticipantAttributes;
-import us.ihmc.pubsub.attributes.PublishModeKind;
 import us.ihmc.pubsub.attributes.PublisherAttributes;
-import us.ihmc.pubsub.attributes.ReliabilityKind;
 import us.ihmc.pubsub.attributes.SubscriberAttributes;
 import us.ihmc.pubsub.participant.Participant;
 import us.ihmc.pubsub.publisher.Publisher;
@@ -38,7 +36,8 @@ public class DdsEndpoint extends DefaultEndpoint
     private final String messageType;
     private final int domainId;
     private final TopicDataType topicDataType;
-    private final DdsQosConfig config;
+    private final DdsQosConfigurator configurator;
+
     private final boolean reuse;
     private Participant participant;
     private Publisher publisher;
@@ -64,8 +63,8 @@ public class DdsEndpoint extends DefaultEndpoint
         this.messageType = messageType;
         this.domainId = domainId;
         this.topicDataType = topicDataType;
-        this.config = config;
         this.reuse = reuse;
+        configurator = new DdsQosConfigurator(config);
     }
 
     @Override
@@ -101,15 +100,8 @@ public class DdsEndpoint extends DefaultEndpoint
         {
             Participant participant = getParticipant();
             PublisherAttributes publisherAttributes =
-                    DOMAIN.createPublisherAttributes(participant, topicDataType, topicName, ReliabilityKind.RELIABLE);
-            if (config != null)
-            {
-                publisherAttributes.getQos().setPublishMode(
-                        config.isAsynchronous() ? PublishModeKind.ASYNCHRONOUS_PUBLISH_MODE : PublishModeKind.SYNCHRONOUS_PUBLISH_MODE);
-                publisherAttributes.getQos().setReliabilityKind(config.getReliability());
-                publisherAttributes.getQos().setDurabilityKind(config.getDurability());
-                publisherAttributes.getQos().setOwnershipPolicyKind(config.getOwnerShipPolicy());
-            }
+                    DOMAIN.createPublisherAttributes(participant, topicDataType, topicName, configurator.getReliability());
+            configurator.configurePublisher(publisherAttributes);
             publisher = DOMAIN.createPublisher(participant, publisherAttributes);
         }
         return publisher;
@@ -128,13 +120,8 @@ public class DdsEndpoint extends DefaultEndpoint
         {
             Participant participant = getParticipant();
             SubscriberAttributes subscriberAttributes =
-                    DOMAIN.createSubscriberAttributes(participant, topicDataType, topicName, ReliabilityKind.RELIABLE);
-            if (config != null)
-            {
-                subscriberAttributes.getQos().setReliabilityKind(config.getReliability());
-                subscriberAttributes.getQos().setDurabilityKind(config.getDurability());
-                subscriberAttributes.getQos().setOwnershipPolicyKind(config.getOwnerShipPolicy());
-            }
+                    DOMAIN.createSubscriberAttributes(participant, topicDataType, topicName, configurator.getReliability());
+            configurator.configureSubscriber(subscriberAttributes);
             subscriber = DOMAIN.createSubscriber(participant, subscriberAttributes, consumer);
         }
         return subscriber;
@@ -146,12 +133,12 @@ public class DdsEndpoint extends DefaultEndpoint
      */
     private Participant getParticipant() throws IOException
     {
-        if (participant == null) {
+        if (participant == null)
+        {
             logger.trace("Creating participant for endpoint: {}", getEndpointUri());
             ParticipantAttributes attributes = DOMAIN.createParticipantAttributes(domainId, topicName);
             participant = DOMAIN.createParticipant(attributes);
             logger.trace(" - Participant created: {}", participant.getGuid());
-
         }
         return participant;
     }
