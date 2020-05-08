@@ -70,11 +70,8 @@ public class ClientApp implements CommandLineRunner
         for (int i = 0; i < channels; i++)
         {
             sleep(50);
-            String name = String.valueOf(Character.valueOf((char)('A' + i)));
-            Channel channel = new Channel();
-            channel.setId(i);
-            channel.setName("C" + name);
-            channel.setDescription("This is channel " + channel.getNameAsString());
+            String name = "C" + (char) ('A' + i);
+            Channel channel = new Channel(i, name, "This is channel " + name);
             template.sendBody(ClientRoutes.CHANNEL_OUT, channel);
             logger.info("Setup channel: " + i + " (" + channel.getNameAsString() + ")");
         }
@@ -85,9 +82,7 @@ public class ClientApp implements CommandLineRunner
         {
             int userId = i;
             service.submit(() -> {
-                User user = new User();
-                user.setId(userId);
-                user.setName(names[userId]);
+                User user = new User(userId, names[userId]);
                 template.sendBody(ClientRoutes.USER_OUT, user);
                 logger.info("Setup user '{}'", user.getName());
                 while (true)

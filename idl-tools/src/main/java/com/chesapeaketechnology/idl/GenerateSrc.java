@@ -116,7 +116,8 @@ public class GenerateSrc implements Callable<Collection<Path>>
             Matcher m = includePattern.matcher(idlSource[0]);
             while (m.find())
             {
-                idlSource[0] = idlSource[0].replace(m.group(), m.group(1));
+                // TODO: Make format constant
+                idlSource[0] = idlSource[0].replace(m.group(), "#include <" + m.group(1) + "_patch.idl>");
             }
             // Write patched source to destination idl
             String modified = idlSource[0];

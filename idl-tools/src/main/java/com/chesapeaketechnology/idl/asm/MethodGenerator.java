@@ -1,14 +1,34 @@
 package com.chesapeaketechnology.idl.asm;
 
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.FieldVisitor;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParseResult;
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.ImportDeclaration;
+import com.github.javaparser.ast.Modifier;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.NodeList;
+import com.github.javaparser.ast.body.BodyDeclaration;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
+import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.body.Parameter;
+import com.github.javaparser.ast.body.TypeDeclaration;
+import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.ast.expr.AssignExpr;
+import com.github.javaparser.ast.expr.FieldAccessExpr;
+import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.expr.NameExpr;
+import com.github.javaparser.ast.expr.VariableDeclarationExpr;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.ast.stmt.ReturnStmt;
+import com.github.javaparser.ast.type.Type;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.BiPredicate;
+import java.util.stream.Collectors;
 
 /**
  * A class visitor that adds helpful methods such as {@link #hashCode()} and {@code copy()}
@@ -16,240 +36,188 @@ import java.util.Map;
  *
  * @author Copyright &#169; 2020 Chesapeake Technology International Corp.
  */
-public class MethodGenerator extends ClassVisitor implements Opcodes
+public class MethodGenerator
 {
-    private final Map<String, String> fields = new HashMap<>();
     private final boolean hash;
     private final boolean copy;
-    private boolean isSerializer;
-    private Type definingType;
+    private final boolean constructor;
+    private final String code;
+    private boolean isIdlType;
 
     /**
      * Create the method generator.
      *
-     * @param vistor Sub visitor.
-     * @param hash   Add hashcode method
-     * @param copy   Add copy method.
+     * @param code        Initial source code.
+     * @param hash        Add hashcode method
+     * @param copy        Add copy method.
+     * @param constructor Add field-setting constructor.
      */
-    public MethodGenerator(ClassVisitor vistor, boolean hash, boolean copy)
+    public MethodGenerator(String code, boolean hash, boolean copy, boolean constructor)
     {
-        super(ASM8, vistor);
+        this.code = code;
         this.hash = hash;
         this.copy = copy;
-    }
-
-
-    @Override
-    public void visit(int version, int access, String name, String signature, String superName, String[] interfaces)
-    {
-        // Get internal name of class
-        this.definingType = Type.getObjectType(name);
-        // Check if class being visited is IDL representation, or a serializer
-        if (interfaces.length == 1 && interfaces[0].equals("us/ihmc/pubsub/TopicDataType"))
-            isSerializer = true;
-        // Base visit logic
-        super.visit(version, access, name, signature, superName, interfaces);
-    }
-
-    @Override
-    public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value)
-    {
-        // Record instance fields
-        if (isInstance(access))
-        {
-            fields.put(name, descriptor);
-        }
-        return super.visitField(access, name, descriptor, signature, value);
-    }
-
-    @Override
-    public void visitEnd()
-    {
-        if (!isSerializer)
-        {
-            if (copy)
-            {
-                visitCopy();
-            }
-            if (hash)
-            {
-                visitHashCode();
-            }
-        }
-        super.visitEnd();
-    }
-
-    private void visitCopy()
-    {
-        MethodVisitor mv = super.visitMethod(ACC_PUBLIC, "copy", "()" + definingType.getDescriptor(), null, null);
-        Label lblStart = new Label();
-        Label lblEnd = new Label();
-        // Start label
-        mv.visitLabel(lblStart);
-        // Create copy instance
-        mv.visitTypeInsn(NEW, definingType.getInternalName());
-        mv.visitInsn(DUP);
-        mv.visitMethodInsn(INVOKESPECIAL, definingType.getInternalName(), "<init>", "()V", false);
-        // Duplicate, one reference to call "set", another for the return value
-        mv.visitInsn(DUP);
-        // copy.set(this)
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitMethodInsn(INVOKEVIRTUAL, definingType.getInternalName(), "set", "(" + definingType.getDescriptor() + ")V", false);
-        // Return the remaining instance on the stack
-        mv.visitInsn(ARETURN);
-        // End label
-        mv.visitLabel(lblEnd);
-        // Visit max stack/local sizes
-        mv.visitMaxs(3, 1);
-        // Add "this" local
-        mv.visitLocalVariable("this", definingType.getDescriptor(), null, lblStart, lblEnd, 0);
-        // Done
-        mv.visitEnd();
-    }
-
-    private void visitHashCode()
-    {
-        MethodVisitor mv = super.visitMethod(ACC_PUBLIC, "hashCode", "()I", null, null);
-        Label lblStart = new Label();
-        Label lblEnd = new Label();
-        // Start label
-        mv.visitLabel(lblStart);
-        // Create array
-        int[] index = {0};
-        visitInt(mv, fields.size());
-        mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
-        // Insert each field reference into the array
-        fields.forEach((name, desc) -> {
-            // Keep array reference
-            mv.visitInsn(DUP);
-            // Index to store value
-            visitInt(mv, index[0]++);
-            // Load "this"
-            mv.visitVarInsn(ALOAD, 0);
-            mv.visitFieldInsn(GETFIELD, definingType.getInternalName(), name, desc);
-            visitConvertToObject(mv, desc);
-            mv.visitInsn(AASTORE);
-        });
-        mv.visitMethodInsn(INVOKESTATIC, "java/util/Objects", "hash", "([Ljava/lang/Object;)I", false);
-        mv.visitInsn(IRETURN);
-        // End label
-        mv.visitLabel(lblEnd);
-        // Visit max stack/local sizes
-        mv.visitMaxs(fields.size() + 1, 1);
-        // Add "this" local
-        mv.visitLocalVariable("this", definingType.getDescriptor(), null, lblStart, lblEnd, 0);
-        // Done
-        mv.visitEnd();
+        this.constructor = constructor;
+        this.isIdlType = code.contains("extends Packet<");
     }
 
     /**
-     * Visit method, converting the type on the top of the stack to an object if necessary.
+     * @return Modified source.
+     */
+    public String apply()
+    {
+        // Do not update non-idl types (idl-specified enums get skipped with this)
+        if (!isIdlType)
+        {
+            return code;
+        }
+        // Check if no changes were specified
+        if (!hash && !copy && !constructor)
+        {
+            return code;
+        }
+        ParseResult<CompilationUnit> result = new JavaParser().parse(code);
+        CompilationUnit cu = result.getResult().get();
+        if (constructor)
+        {
+            visitConstructor(cu);
+        }
+        if (copy)
+        {
+            visitCopy(cu);
+        }
+        if (hash)
+        {
+            visitHashcode(cu);
+        }
+        return cu.toString();
+    }
+
+    /**
+     * <pre>return Objects.hash(one, two...)</pre>
      *
-     * @param mv   Method visitor.
-     * @param desc Descriptor of type on stack.
+     * @param cu Unit to modify.
      */
-    private static void visitConvertToObject(MethodVisitor mv, String desc)
+    private void visitHashcode(CompilationUnit cu)
     {
-        // Convert StringBuilder to String
-        if (desc.equals("Ljava/lang/StringBuilder;"))
+        BlockStmt block = new BlockStmt();
+        MethodCallExpr call = new MethodCallExpr(new NameExpr("Objects"), "hash");
+        for (FieldDeclaration field : cu.findAll(FieldDeclaration.class))
         {
-            mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false);
-        }
-        // Primitives are only one char long, skip other non-primitives
-        else if (desc.length() > 1)
-        {
-            return;
-        }
-        // Use "<PrimBoxType>.valueOf(<Prim>)"
-        switch (desc)
-        {
-            case "Z":
-                mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;", false);
-                break;
-            case "C":
-                mv.visitMethodInsn(INVOKESTATIC, "java/lang/Character", "valueOf", "(C)Ljava/lang/Character;", false);
-                break;
-            case "B":
-                mv.visitMethodInsn(INVOKESTATIC, "java/lang/Byte", "valueOf", "(B)Ljava/lang/Byte;", false);
-                break;
-            case "S":
-                mv.visitMethodInsn(INVOKESTATIC, "java/lang/Short", "valueOf", "(S)Ljava/lang/Short;", false);
-                break;
-            case "I":
-                mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
-                break;
-            case "F":
-                mv.visitMethodInsn(INVOKESTATIC, "java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", false);
-                break;
-            case "J":
-                mv.visitMethodInsn(INVOKESTATIC, "java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", false);
-                break;
-            case "D":
-                mv.visitMethodInsn(INVOKESTATIC, "java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", false);
-                break;
-        }
-    }
-
-    /**
-     * Visit method with a specified number.
-     *
-     * @param mv   Method visitor.
-     * @param size Integer to add to the instructions.
-     */
-    private static void visitInt(MethodVisitor mv, int size)
-    {
-        if (size <= 5)
-        {
-            switch (size)
+            if (field.getCommonType().asString().endsWith("StringBuilder"))
             {
-                case 0:
-                    mv.visitInsn(ICONST_0);
-                    break;
-                case 1:
-                    mv.visitInsn(ICONST_1);
-                    break;
-                case 2:
-                    mv.visitInsn(ICONST_2);
-                    break;
-                case 3:
-                    mv.visitInsn(ICONST_3);
-                    break;
-                case 4:
-                    mv.visitInsn(ICONST_4);
-                    break;
-                case 5:
-                    mv.visitInsn(ICONST_5);
-                    break;
-                default:
-                    throw new IllegalStateException("Did not visit with value: " + size);
+                call.addArgument(new NameExpr(field.getVariable(0).getName() + ".toString()"));
+            } else
+            {
+                call.addArgument(new NameExpr(field.getVariable(0).getName()));
             }
-        } else if (size <= 127)
-        {
-            mv.visitIntInsn(BIPUSH, size);
-        } else if (size <= 32767)
-        {
-            mv.visitIntInsn(SIPUSH, size);
-        } else
-        {
-            mv.visitLdcInsn(size);
         }
+        block.addStatement(new ReturnStmt(call));
+        //
+        MethodDeclaration method = new MethodDeclaration();
+        method.addAnnotation(Override.class);
+        method.setName("hashCode");
+        method.setModifiers(Modifier.Keyword.PUBLIC);
+        method.setType(int.class);
+        method.setBody(block);
+        // Add import and method definition
+        cu.getImports().add(new ImportDeclaration(Objects.class.getName(), false, false));
+        cu.getClassByName(getPrimaryType(cu)).get().addMember(method);
     }
 
     /**
-     * @param access Field access modifiers.
-     * @return {@code true} when the modifiers do not inclue static.
+     * <pre>
+     * Type t = new Type()
+     * t.set(this)
+     * return t
+     * </pre>
+     *
+     * @param cu Unit to modify.
      */
-    private static boolean isInstance(int access)
+    private void visitCopy(CompilationUnit cu)
     {
-        return !isStatic(access);
+        Type selfType = StaticJavaParser.parseType(getPrimaryType(cu));
+        BlockStmt block = new BlockStmt();
+        VariableDeclarationExpr v = new VariableDeclarationExpr();
+        v.addVariable(new VariableDeclarator(selfType, "copy"));
+        v.getVariable(0).setInitializer("new " + selfType + "()");
+        MethodCallExpr call = new MethodCallExpr(v.getVariable(0).getNameAsExpression(), "set", new NodeList<>(new NameExpr("this")));
+        block.addStatement(v);
+        block.addStatement(call);
+        block.addStatement(new ReturnStmt(v.getVariable(0).getNameAsExpression()));
+        //
+        MethodDeclaration method = new MethodDeclaration();
+        method.setName("copy");
+        method.setModifiers(Modifier.Keyword.PUBLIC);
+        method.setType(selfType);
+        method.setBody(block);
+        // Add right after the "set" method
+        insertAfter(cu, method,
+                (before, next) -> before instanceof MethodDeclaration && ((MethodDeclaration) before).getNameAsString().equals("set"));
     }
 
     /**
-     * @param access Field access modifiers.
-     * @return {@code true} when the modifiers include static.
+     * <pre>
+     * Type(t one, t two) {
+     * this.one = one;
+     * this.two = two
+     * }
+     * </pre>
+     *
+     * @param cu Unit to modify.
      */
-    private static boolean isStatic(int access)
+    private void visitConstructor(CompilationUnit cu)
     {
-        return (access & ACC_STATIC) == ACC_STATIC;
+        // Generate constructor parameters
+        List<Parameter> params = cu.findAll(FieldDeclaration.class).stream()
+                .map(field -> new Parameter(field.getCommonType(), field.getVariable(0).getNameAsString()))
+                .map(param -> {
+                    // Change StringBuilder to String for constructor parameters
+                    if (param.getType().asString().endsWith("StringBuilder"))
+                    {
+                        param.setType("String");
+                    }
+                    return param;
+                }).collect(Collectors.toList());
+        ConstructorDeclaration constructor = new ConstructorDeclaration(getPrimaryType(cu));
+        constructor.setParameters(new NodeList<>(params));
+        constructor.setPublic(true);
+        BlockStmt block = new BlockStmt();
+        for (FieldDeclaration field : cu.findAll(FieldDeclaration.class))
+        {
+            if (field.getCommonType().asString().endsWith("StringBuilder")) {
+                String name = field.getVariable(0).getNameAsString();
+                AssignExpr assign = new AssignExpr(new FieldAccessExpr(
+                        new NameExpr("this"), name), new NameExpr("new StringBuilder(" + name + ")"), AssignExpr.Operator.ASSIGN);
+                block.addStatement(assign);
+            }
+            else
+            {
+                String name = field.getVariable(0).getNameAsString();
+                AssignExpr assign = new AssignExpr(new FieldAccessExpr(new NameExpr("this"), name), new NameExpr(name), AssignExpr.Operator.ASSIGN);
+                block.addStatement(assign);
+            }
+        }
+        constructor.setBody(block);
+        // Add after other constructors
+        insertAfter(cu, constructor,
+                (before, next) -> before instanceof ConstructorDeclaration && next instanceof MethodDeclaration);
+    }
+
+    private String getPrimaryType(CompilationUnit cu)
+    {
+        return cu.findAll(TypeDeclaration.class).get(0).getNameAsString();
+    }
+
+    private void insertAfter(CompilationUnit cu, BodyDeclaration<?> body, BiPredicate<Node, Node> predicate) {
+        ClassOrInterfaceDeclaration dec = cu.getClassByName(getPrimaryType(cu)).get();
+        for (int i = 0; i < dec.getMembers().size(); i++) {
+            Node before = i == 0 ? null : dec.getMember(i - 1);
+            Node next = dec.getMember(i);
+            if (predicate.test(before, next)) {
+                dec.getMembers().add(i, body);
+                return;
+            }
+        }
     }
 }

@@ -12,12 +12,26 @@ task generateSources(dependsOn: classes, type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     args 'generate'
 }
-// Task to generate Java classes from Java sources
+// Task to process compiled sources, adding additional functions
 //  - Assumes directory structure matches default values
-task compileSources(dependsOn: generateSources, type: JavaExec) {
+task processGenerated(dependsOn: generateSources, type: JavaExec) {
     main = mainClassName
     classpath = sourceSets.main.runtimeClasspath
-    args 'compile', '--jar', '--process'
+    args 'process', '--hashcode', '--copy', '--constructor'
+}
+// Task to generate Java classes from Java sources
+//  - Assumes directory structure matches default values
+task compileSources(dependsOn: processGenerated, type: JavaExec) {
+    main = mainClassName
+    classpath = sourceSets.main.runtimeClasspath
+    args 'compile'
+}
+// Task to package compiled sources into a jar
+//  - Assumes directory structure matches default values
+task packageCompiled(dependsOn: compileSources, type: JavaExec) {
+    main = mainClassName
+    classpath = sourceSets.main.runtimeClasspath
+    args 'pack'
 }
 // Task to compile the idl-tools into a runnable program
 task fatJar(type: Jar) {
@@ -56,5 +70,5 @@ publishing {
 dependencies {
     compile group: "us.ihmc", name: "ihmc-pub-sub-generator", version: "$ihmc_version"
     compile group: 'info.picocli', name: 'picocli', version: '4.2.0'
-    compile group: 'org.ow2.asm', name: 'asm', version: '8.0.1'
+    compile group: 'com.github.javaparser', name: 'javaparser-core', version: '3.15.21'
 }

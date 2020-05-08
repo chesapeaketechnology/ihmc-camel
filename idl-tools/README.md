@@ -21,6 +21,22 @@ A collection of tools to automate the process of generating Java classes from ID
 | `-r` / `--regex`   | None          | Regular expression to match and replacement text pairs.              |
 | `--pragma`         | False         | Flag for pre-processing IDL sources. Removes `#pragma` from sources. |
 
+#### Process
+
+**Description**: Post-process generated sources to add additional useful behavior.
+
+**Usage**: `process [--hashcode] [--copy] <input>`
+
+| Parameter         | Default Value     | Description                   |
+| ----------------- | ----------------- | ----------------------------- |
+| `input`           | `./generated-src` | Directory containing sources. |
+
+| Option                  | Description                                  |
+| ----------------------- | -------------------------------------------- |
+| `-hc` / `--hashcode`    | Add `hashCode()` to classes.                 |
+| `-cp` / `--copy`        | Add `<T> copy()` to classes.                 |
+| `-ct` / `--constructor` | Add a constructor that populates all fields. |
+
 #### Compile
 
 **Description**: Compile a directory's sources.
@@ -43,21 +59,6 @@ A collection of tools to automate the process of generating Java classes from ID
 | `inputDirectory`   | `./generated-bin` | Directory containing generated classes.    |
 | `outputJar`        | `./generated.jar` | Jar to place generated classes into.       |
 
-#### Process
-
-**Description**: Post-process classes to add additional useful behavior.
-
-**Usage**: `process [--hashcode] [--copy] <input>`
-
-| Parameter         | Default Value     | Description                                |
-| ----------------- | ----------------- | ------------------------------------------ |
-| `input`           | `./generated-bin` | Directory or jar containing classes.       |
-
-| Option               | Description                   |
-| -------------------- | ----------------------------- |
-| `-hc` / `--hashcode` | Add `hashCode()` to classes.  |
-| `-c` / `--copy`      | Add `<T> copy()` to classes.  |
-
 ## Usage
 
 ### Command line
@@ -66,8 +67,8 @@ A collection of tools to automate the process of generating Java classes from ID
 2. Run the commands specified above
     - Example: 
          1. `java -jar build/libs/idl-tools-1.0.0.jar generate`
-         2. `java -jar build/libs/idl-tools-1.0.0.jar compile --jar`
-         3. `java -jar build/libs/idl-tools-1.0.0.jar process --hashcode --copy`
+         2. `java -jar build/libs/idl-tools-1.0.0.jar process --hashcode --copy`
+         3. `java -jar build/libs/idl-tools-1.0.0.jar compile --jar`
          4. `java -jar build/libs/idl-tools-1.0.0.jar package`
          
 ### Gradle task
@@ -91,21 +92,29 @@ dependencies {
     customClasspath implementation("com.chesapeaketechnology:idl:${idl_tools_ver}")
 }
 
+// Task to generate Java sources from IDL files
 task generateSources(type: JavaExec) {
     main = "com.chesapeaketechnology.idl.Tool"
     classpath = configurations.customClasspath
-    args 'generate', 'src/idl', 'build/classes/java/main'
+    args 'generate', '--pragma', IDL_SRC, GEN_SRC
 }
-
-task instrument(type: JavaExec) {
+// Task to add additional capabilities to the compiled files
+task instrumentGenerated(dependsOn: generateSources, type: JavaExec) {
     main = "com.chesapeaketechnology.idl.Tool"
     classpath = configurations.customClasspath
-    args 'process', '--copy', '--hashcode', 'build/classes/java/main'
+    args 'process', '--copy', '--hashcode', '--constructor', GEN_SRC
 }
-
-compileJava.dependsOn([generateSources])
-compileJava.doLast {
-    tasks.instrument.execute()
+// Task to generate Java sources from IDL files
+task compileGenerated(dependsOn: instrumentGenerated, type: JavaExec) {
+    main = "com.chesapeaketechnology.idl.Tool"
+    classpath = configurations.customClasspath
+    args 'compile', GEN_SRC, GEN_BIN
+}
+// Task to add additional capabilities to the compiled files
+task packGenerated(dependsOn: compileGenerated, type: JavaExec) {
+    main = "com.chesapeaketechnology.idl.Tool"
+    classpath = configurations.customClasspath
+    args 'pack', GEN_BIN, GEN_JAR
 }
 ```
     
