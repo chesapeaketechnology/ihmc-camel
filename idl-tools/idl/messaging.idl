@@ -3,24 +3,28 @@ module example {
 module idl {
 module messaging {
 
-	struct Channel {
-		long id;
-		string name;
-		string description;
-	};
+    struct Channel {
+        // @key
+        long id;
+        string name;
+        string description;
+    };
 
-	struct User {
-		long id;
-		string name;
-	};
+    struct User {
+        // @key
+        long id;
+        string name;
+    };
 
-	struct Message {
-		long messageId;
-		long channelId;
-		long userId;
-		string text;
-	};
-	
+    struct Message {
+        // @key
+        long messageId;
+        // @key
+        long channelId;
+        long userId;
+        string text;
+    };
+
 };
 };
 };

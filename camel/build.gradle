@@ -34,6 +34,17 @@ publishing {
 
             artifact tasks.sourceJar
             artifact tasks.javadocJar
+
+            // Allow user to define their own camel version
+            //  - Its specified in the readme any version >= 3.0.0 works
+            pom.withXml {
+                Node pomNode = asNode()
+                pomNode.dependencies.'*'.findAll() {
+                    it.artifactId.text() == 'camel-core'
+                }.each() {
+                    it.parent().remove(it)
+                }
+            }
         }
     }
 }

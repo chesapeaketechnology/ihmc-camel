@@ -23,19 +23,31 @@ A collection of tools to automate the process of generating Java classes from ID
 
 #### Process
 
-**Description**: Post-process generated sources to add additional useful behavior.
+**Description**: Transform generated sources to add additional useful behavior.
 
-**Usage**: `process [--hashcode] [--copy] <input>`
+**Usage**: `process [--hashcode] [--copy] [--constructor] [--packageMapping <com.exmaple=org.example>] <input>`
 
 | Parameter         | Default Value     | Description                   |
 | ----------------- | ----------------- | ----------------------------- |
 | `input`           | `./generated-src` | Directory containing sources. |
 
-| Option                  | Description                                  |
-| ----------------------- | -------------------------------------------- |
-| `-hc` / `--hashcode`    | Add `hashCode()` to classes.                 |
-| `-cp` / `--copy`        | Add `<T> copy()` to classes.                 |
-| `-ct` / `--constructor` | Add a constructor that populates all fields. |
+| Option                     | Description                                  |
+| -------------------------- | -------------------------------------------- |
+| `-hc` / `--hashcode`       | Add `hashCode()` to classes.                 |
+| `-cp` / `--copy`           | Add `<T> copy()` to classes.                 |
+| `-ct` / `--constructor`    | Add a constructor that populates all fields. |
+| `-pm` / `--packageMapping` | Map a package name to another package name.  |
+
+#### Compat
+
+**Description**: Transform generated sources to be compatible with the given DDS implementation.
+
+**Usage**: `compat <type> <input>`
+
+| Parameter | Default Value     | Description                                |
+| --------- | ----------------- | ------------------------------------------ |
+| `type`    | None              | DDS implementation name. Current support: <ul><li>CAFE - <i>(Requires `process --constructor`)</i></li></ul> |
+| `input`   | `./generated-src` | Directory containing source files. |
 
 #### Compile
 
@@ -104,8 +116,15 @@ task instrumentGenerated(dependsOn: generateSources, type: JavaExec) {
     classpath = configurations.customClasspath
     args 'process', '--copy', '--hashcode', '--constructor', GEN_SRC
 }
+// Task to add additional capabilities to the compiled files
+task instrumentCompatibility(dependsOn: instrumentGenerated, type: JavaExec) {
+    main = "com.chesapeaketechnology.idl.Tool"
+    classpath = configurations.customClasspath
+    args 'compat', DDSI_TYPE_NAME, GEN_SRC
+}
 // Task to generate Java sources from IDL files
-task compileGenerated(dependsOn: instrumentGenerated, type: JavaExec) {
+//  - Change dependsOn to 'instrumentGenerated' if no compatibility is needed
+task compileGenerated(dependsOn: instrumentCompatibility, type: JavaExec) {
     main = "com.chesapeaketechnology.idl.Tool"
     classpath = configurations.customClasspath
     args 'compile', GEN_SRC, GEN_BIN

@@ -14,7 +14,8 @@ import java.util.concurrent.Callable;
         GenerateSrc.class,
         CompileSrc.class,
         Pack.class,
-        Process.class
+        Process.class,
+        Compat.class
 })
 public class Tool implements Callable<Void>
 {

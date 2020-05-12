@@ -103,6 +103,7 @@ public class CompileSrc implements Callable<Collection<Path>>
             List<String> args = new ArrayList<>();
             args.addAll(Arrays.asList("-source", "1.8"));
             args.addAll(Arrays.asList("-target", "1.8"));
+            args.addAll(Arrays.asList("-cp", System.getProperty("java.class.path")));
             // Create compile task and execute
             DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
             JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, args, null, compilationUnits);

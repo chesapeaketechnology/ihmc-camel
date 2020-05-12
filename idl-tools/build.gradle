@@ -3,6 +3,13 @@ plugins {
     id 'application'
 }
 
+// Include compatibility classes into the release
+processResources {
+    from('compat/cafe/') {
+        into ''
+    }
+}
+
 mainClassName = "com.chesapeaketechnology.idl.Tool"
 
 // Task to generate Java sources from IDL files
@@ -19,9 +26,16 @@ task processGenerated(dependsOn: generateSources, type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     args 'process', '--hashcode', '--copy', '--constructor'
 }
+// Task to process compiled sources, adding compatibility functions
+//  - Assumes directory structure matches default values
+task processCompatibility(dependsOn: processGenerated, type: JavaExec) {
+    main = mainClassName
+    classpath = sourceSets.main.runtimeClasspath
+    args 'compat', 'CAFE'
+}
 // Task to generate Java classes from Java sources
 //  - Assumes directory structure matches default values
-task compileSources(dependsOn: processGenerated, type: JavaExec) {
+task compileSources(dependsOn: processGenerated /* processCompatibility or processGenerated */, type: JavaExec) {
     main = mainClassName
     classpath = sourceSets.main.runtimeClasspath
     args 'compile'
@@ -67,8 +81,13 @@ publishing {
     }
 }
 
+repositories {
+    flatDir dirs: "compat"
+}
+
 dependencies {
     compile group: "us.ihmc", name: "ihmc-pub-sub-generator", version: "$ihmc_version"
     compile group: 'info.picocli', name: 'picocli', version: '4.2.0'
     compile group: 'com.github.javaparser', name: 'javaparser-core', version: '3.15.21'
+    runtimeOnly fileTree(dir: 'compat/cafe', include: ['*.class'])
 }
