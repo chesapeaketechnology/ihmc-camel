@@ -12,10 +12,10 @@ import java.util.concurrent.Callable;
  */
 @Command(subcommands = {
         GenerateSrc.class,
-        CompileSrc.class,
-        Pack.class,
         Process.class,
-        Compat.class
+        Compat.class,
+        CompileSrc.class,
+        Pack.class
 })
 public class Tool implements Callable<Void>
 {

@@ -4,8 +4,8 @@ import com.chesapeaketechnology.idl.util.FileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 import us.ihmc.commons.nio.FileTools;
 import us.ihmc.idl.generator.IDLGenerator;
 

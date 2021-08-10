@@ -2,6 +2,7 @@ package com.chesapeaketechnology.idl.patch;
 
 import com.chesapeaketechnology.idl.CompatibilityType;
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.FieldDeclaration;
@@ -53,6 +54,8 @@ public class CompatibilityProcessor extends AbstractProcessor
         {
             case CAFE:
                 CompilationUnit cu = createCompilationUnit();
+                // Implement IDLEntity
+                visitCafeInherits(cu);
                 // Add KeyList annotation
                 visitCafeAnnotation(cu);
                 // Add "this" qualifier to expressions
@@ -62,9 +65,15 @@ public class CompatibilityProcessor extends AbstractProcessor
                 setCode(cu.toString().replaceAll("(?<=\\w)_(?=\\b)", ""));
                 break;
             default:
-               break;
+                break;
         }
         return getCode();
+    }
+
+    private void visitCafeInherits(CompilationUnit cu)
+    {
+        cu.getImports().add(new ImportDeclaration("org.omg.CORBA.portable.IDLEntity", false, false));
+        cu.getClassByName(getPrimaryType(cu)).get().addImplementedType("IDLEntity");
     }
 
     private void visitCafeAnnotation(CompilationUnit cu)
@@ -112,7 +121,8 @@ public class CompatibilityProcessor extends AbstractProcessor
             // Update all statements to include "this" qualifier
             for (Statement n : dec.getBody().get().getStatements())
             {
-                if (n instanceof ExpressionStmt) {
+                if (n instanceof ExpressionStmt)
+                {
                     ExpressionStmt curStmt = (ExpressionStmt) n;
                     String curStmtText = curStmt.getExpression().toString();
                     if (!curStmtText.contains(IHMC_COPY))
