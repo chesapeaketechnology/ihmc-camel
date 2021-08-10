@@ -65,14 +65,14 @@ public class CompatibilityProcessor extends AbstractProcessor
                 setCode(cu.toString().replaceAll("(?<=\\w)_(?=\\b)", ""));
                 break;
             default:
-               break;
+                break;
         }
         return getCode();
     }
 
     private void visitCafeInherits(CompilationUnit cu)
     {
-        cu.getImports().add(new ImportDeclaration("org.omg.CORBA.portable.IDLEntity", false ,false));
+        cu.getImports().add(new ImportDeclaration("org.omg.CORBA.portable.IDLEntity", false, false));
         cu.getClassByName(getPrimaryType(cu)).get().addImplementedType("IDLEntity");
     }
 
@@ -121,7 +121,8 @@ public class CompatibilityProcessor extends AbstractProcessor
             // Update all statements to include "this" qualifier
             for (Statement n : dec.getBody().get().getStatements())
             {
-                if (n instanceof ExpressionStmt) {
+                if (n instanceof ExpressionStmt)
+                {
                     ExpressionStmt curStmt = (ExpressionStmt) n;
                     String curStmtText = curStmt.getExpression().toString();
                     if (!curStmtText.contains(IHMC_COPY))
