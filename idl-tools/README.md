@@ -88,11 +88,9 @@ A collection of tools to automate the process of generating Java classes from ID
 * For the current project
     1. Run `gradle compileSources`
 * For your own project
-    1. Add the IHMC repository to your project 
-        * `maven { url "https://dl.bintray.com/ihmcrobotics/maven-release/" }`
-    2. Add this project as a dependency
-        * `implementation("com.chesapeaketechnology:dds:${dds_camel_version}")`
-    3. Create a gradle `JavaExec` task that calls `com.chesapeaketechnology.idl.Tool` with the specified arguments for each command you want to run
+    1. Add this project as a dependency
+        * `implementation("com.chesapeaketechnology:ihmc-dds:${dds_camel_version}")`
+    2. Create a gradle `JavaExec` task that calls `com.chesapeaketechnology.idl.Tool` with the specified arguments for each command you want to run
 
 **Example configuration:**
 ```groovy

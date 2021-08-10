@@ -8,9 +8,6 @@ allprojects {
     repositories {
         flatDir dirs: "${rootDir}/libs"
         mavenCentral()
-        maven {
-            url "https://dl.bintray.com/ihmcrobotics/maven-release/"
-        }
     }
 
     apply plugin: 'checkstyle'
@@ -27,7 +24,7 @@ allprojects {
         targetCompatibility = 1.8
 
         ext {
-            ihmc_version = "0.14.0"
+            ihmc_version = "0.16.1"
         }
 
         dependencies {
