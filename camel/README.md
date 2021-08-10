@@ -16,7 +16,7 @@ Add the IHMC repository:
 ```
 Add the camel component dependency, where `dds_camel_version` is the latest artifact version:
 ```groovy
-implementation("com.chesapeaketechnology:dds:${dds_camel_version}")
+implementation("com.chesapeaketechnology:ihmc-dds:${dds_camel_version}")
 ```
 
 ### Camel Component
